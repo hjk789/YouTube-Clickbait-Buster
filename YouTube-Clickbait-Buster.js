@@ -1,16 +1,17 @@
-﻿// Name            YouTube Clickbait-Buster
+// Name            YouTube Clickbait-Buster
 // Description     Check whether it's worth watching a video before actually clicking on it, by peeking it's visual or verbal content, description, comments, viewing the thumbnail in full-size and displaying the full title.
 // Author          BLBC (github.com/hjk789, addons.mozilla.org/user/10772492)
-// Homepage        https://github.com/hjk789/Userscripts/tree/master/YouTube-Clickbait-Buster
+// Homepage        https://github.com/hjk789/YouTube-Clickbait-Buster
 
 /*
 
 ******************** LICENSE ********************
 
 - You can view the code, download copies to your devices, install, run, use the features and uninstall this software.
-- You can modify your copy as you like.
-- Feel free to refer to this extension, just make sure to include a link to its [GitHub homepage](https://github.com/hjk789/Userscripts/tree/master/YouTube-Clickbait-Buster).
-- You cannot do any other action not allowed in this license.
+- You can modify your downloaded copy as you like.
+- You can rate and review this project.
+- You can only do actions expressly allowed in this license. Any other action not mentioned in this license is forbidden, including, but not limited to, redistribution.
+- Feel free to refer to YouTube Clickbait-Buster, just make sure to include a link to this project's repository homepage (https://github.com/hjk789/YouTube-Clickbait-Buster). This is recommended over linking to an extension store, as the person who clicks the link will be able to choose the extension store they will install from.
 
 Copyright (c) 2022+ BLBC (github.com/hjk789)
 
@@ -618,7 +619,7 @@ extendFunctions()
                         transcript text { display: block; margin-top: 10px; }                        /* Separate each line of the transcript. By default the transcript lines are displayed in a single continuous line. */
                         .naturalWidth > div > div { opacity: 0.8 !important; }                       /* Make the timestamps more opaque when there's enough screen space for the image to be displayed in full size. */
                         .hasSpace > div { margin: 1px !important; }                                  /* Add a margin around chunks to visually separate them when there's enough space for more than one column. */
-                        #floatingBurgerMenuBtn:hover { background: #e8e8e8 !important; }
+                        #floatingBurgerBtn:hover { background: #e8e8e8 !important; }
 
                         #burgerMenu .menu-item-button {
                             font-family: Roboto, Arial, sans-serif;
@@ -815,7 +816,7 @@ function processVideoItem(node)
     else
     {
         element = node
-        //isRelatedVideo = true
+        isRelatedVideo = true
 
         if (!isVideoPage)
         {
@@ -829,13 +830,10 @@ function processVideoItem(node)
         }
         else
         {
-            if (element.parentElement.id == "published-time-text")
-            //{
-                element = element.parentElement
+            element = element.parentElement
 
-                //isRelatedVideo = false
-            //}
-            else element = element.parentElement
+            if (element.parentElement.id == "published-time-text")
+                isRelatedVideo = false
         }
 
         brect = element.getBoundingClientRect()
@@ -843,16 +841,18 @@ function processVideoItem(node)
         xPos = brect.right
         width = brect.width
 
-        /*if (isVideoPage && isRelatedVideo)
+        if (isVideoPage && isRelatedVideo)
         {
             yPos = yPos+30
-            xPos = xPos+width+25
+            xPos = xPos-56
+            floatingBurgerContainer.style.paddingTop = "0px"
         }
         else
-        {*/
+        {
             yPos = yPos-30
             xPos = xPos-60
-        //}
+            floatingBurgerContainer.style.paddingTop = "30px"
+        }
 
         /*if (isVideoPage)
         {
