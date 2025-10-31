@@ -23,7 +23,7 @@ if (typeof browser == "undefined")
     var browser = chrome
 
 let selectedVideoURL, continuationToken//, selectedVideoEll
-const isMobile = !/www/.test(location.hostname)
+const isMobile = location.hostname.includes("youtube") && !location.hostname.includes("www")
 let isMenuReady = false, hasSpace
 let response, lastVideoUrl, isVideoPage
 
@@ -482,7 +482,7 @@ extendFunctions()
             else
                 this.parentElement.click()              // On mobile, the menu creates a backdrop above the body which is only dismissed when clicked. Clicking the body element doesn't work in this case.
 
-            const videoId = selectedVideoURL.split(/v=|shorts\//)[1]?.split("&")[0]
+            const videoId = selectedVideoURL.split(/v=|shorts[/]|youtu\.be[/]/)[1]?.split(/&|\?/)[0]
 
             const img = document.body.createElement("img",
             {
@@ -551,19 +551,7 @@ extendFunctions()
     }*/
 
 
-    var burgerMenu = document.body.createElement("div",
-    {
-        id: "burgerMenu",
-        style: "visibility: hidden; position: absolute; color: var(--paper-listbox-color); background-color:"+ backgroundColor +
-               "; border-radius: 12px; box-shadow: #0000004d 0px 0px 15px 10px; text-shadow: initial;",
-    })
 
-    burgerMenu.appendChild(viewStoryboardButton)
-    burgerMenu.appendChild(viewTranscriptButton)
-    burgerMenu.appendChild(viewDescriptionButton)
-    burgerMenu.appendChild(viewCommentsButton)
-    burgerMenu.appendChild(viewChannelButton)
-    burgerMenu.appendChild(viewThumbnailButton)
 
     //burgerMenuBtn?.appendChild(burgerMenu)
 
@@ -572,13 +560,14 @@ extendFunctions()
         var floatingBurgerContainer = document.body.createElement("div",
         {
             id: "floatingBurgerContainer",
-            style: "visibility: hidden; position: fixed; z-index: 9999; padding: 30px 30px; border-radius: 50px;"
+            style: "visibility: hidden; position: fixed; z-index: 9999; padding: 30px 30px; border-radius: 50px !important;"
         })
 
         var floatingBurgerBtn = floatingBurgerContainer.createElement("div",
         {
             id: "floatingBurgerBtn",
-            style: "display: flex; justify-content: right; font-size: 16px; z-index: 9999; cursor: pointer; text-shadow: black 0px 0px 2px; padding: 5px 10px; border-radius: 50px; border: 1px solid gray; background: white; color: #333;",
+            style: "display: flex; justify-content: right; font-size: 16px; z-index: 9999; cursor: pointer; text-shadow: black 0px 0px 2px;" +
+                   "padding: 5px 10px; border-radius: 50px !important; border: 1px solid gray; background: white; color: #333;",
             innerHTML: "☰",
             onclick: function()
             {
@@ -593,7 +582,20 @@ extendFunctions()
         //var floatingBurgerMenu = burgerMenu//.cloneNode(true)
 
         //floatingBurgerBtn.appendChild(floatingBurgerMenu)
-        floatingBurgerBtn.appendChild(burgerMenu)
+
+        var burgerMenu = floatingBurgerBtn.createElement("div",
+        {
+            id: "burgerMenu",
+            style: "visibility: hidden; position: absolute; color: var(--paper-listbox-color); background-color:"+ backgroundColor +
+                   "; border-radius: 12px; box-shadow: #0000004d 0px 0px 15px 10px; text-shadow: initial;",
+        })
+
+        burgerMenu.appendChild(viewStoryboardButton)
+        burgerMenu.appendChild(viewTranscriptButton)
+        burgerMenu.appendChild(viewDescriptionButton)
+        burgerMenu.appendChild(viewCommentsButton)
+        burgerMenu.appendChild(viewChannelButton)
+        burgerMenu.appendChild(viewThumbnailButton)
     //}
 }
 
@@ -656,7 +658,7 @@ extendFunctions()
 
     setInterval(()=>
     {
-        node = document.querySelectorAll(":is([href*='/watch?'], [href*='/shorts/']):hover, :is(yt-lockup-view-model, ytm-shorts-lockup-view-model):hover [href]")[0]
+        node = document.querySelectorAll(":is([href*='/watch?'], [href*='/shorts/'], [href*='youtu.be/']):hover, :is(yt-lockup-view-model, ytm-shorts-lockup-view-model):hover [href]")[0]
 
         isVideoPage = location.href.includes("youtube.com/watch?")
 
