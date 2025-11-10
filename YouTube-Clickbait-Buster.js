@@ -72,61 +72,53 @@ extendFunctions()
 
             document.body.click()     // Dismiss the menu.
 
-            //const xhr = new XMLHttpRequest()
-            //xhr.open('GET', selectedVideoURL)
-            //xhr.onload = function()
             if (selectedVideoURL != lastVideoUrl)
             {
                 response = await makeRequest(selectedVideoURL)//.then((response)=>
                 lastVideoUrl = selectedVideoURL
             }
 
-            //{
-                const fullStoryboardURL = response.match(/"playerStoryboardSpecRenderer":.+?"(https.+?)",/)
+            const fullStoryboardURL = response.match(/"playerStoryboardSpecRenderer":.+?"(https.+?)",/)
 
-                if (!fullStoryboardURL || fullStoryboardURL[1].includes("googleadservices"))                // It can happen sometimes that the storyboard provided is of the ad, instead of the video itself.
-                {                                                                                           // But this seems to only happen on videos that don't have a storyboard available anyway.
-                    alert("Storyboard not available for this video!")
+            if (!fullStoryboardURL || fullStoryboardURL[1].includes("googleadservices"))                // It can happen sometimes that the storyboard provided is of the ad, instead of the video itself.
+            {                                                                                           // But this seems to only happen on videos that don't have a storyboard available anyway.
+                alert("Storyboard not available for this video!")
 
-                    return
+                return
+            }
+
+            const urlSplit = fullStoryboardURL[1].split("|")
+            let mode = urlSplit[3] ? 3 : 1                                  // YouTube provides 2 modes of storyboards: one with 25 frames per chunk and another one with 60 frames per chunk. I've choose the former mode,
+                                                                            // as in the second one the frames are too tiny to see anything. But in short videos with less than 30 seconds, only the latter is available.
+            if (!urlSplit[mode])                                            // There's also a third mode, videos that have only one mode and ongoing lives storyboards, but I couldn't find any way to make them work.
+            {
+                alert("Storyboard not available for this video yet! Try again some hours later.")
+
+                return
+            }
+
+            const storyboardId = urlSplit[mode].replace(/.+#rs/, "&sigh=rs")
+
+            const storyboardContainer = document.body.createElement("div",
+            {
+                id: "storyboard",
+                style: "position: fixed; z-index: 9999; display: grid; width: min-content; max-width: 100.3vw; overflow-y: inherit; background-color: white; margin: auto; top: 0px; left: 0px; right: 0px;",
+                contentEditable: !isMobile,                             // Make the storyboards container focusable on the desktop layout. From all the other methods to achieve this, this is the only one that works reliably.
+                onmousedown: function() {
+                    window.getSelection().removeAllRanges()             // Because contentEditable is true, the storyboards become selectable. This prevents that by immediately deselecting them.
                 }
-
-                const urlSplit = fullStoryboardURL[1].split("|")
-                let mode = urlSplit[3] ? 3 : 1                                  // YouTube provides 2 modes of storyboards: one with 25 frames per chunk and another one with 60 frames per chunk. I've choose the former mode,
-                                                                                // as in the second one the frames are too tiny to see anything. But in short videos with less than 30 seconds, only the latter is available.
-                if (!urlSplit[mode])                                            // There's also a third mode, videos that have only one mode and ongoing lives storyboards, but I couldn't find any way to make them work.
-                {
-                    alert("Storyboard not available for this video yet! Try again some hours later.")
-
-                    return
-                }
-
-                const storyboardId = urlSplit[mode].replace(/.+#rs/, "&sigh=rs")
-
-                const storyboardContainer = document.body.createElement("div",
-                {
-                    id: "storyboard",
-                    style: "position: fixed; z-index: 9999; display: grid; width: min-content; max-width: 100.3vw; overflow-y: inherit; background-color: white; margin: auto; top: 0px; left: 0px; right: 0px;",
-                    contentEditable: !isMobile,                             // Make the storyboards container focusable on the desktop layout. From all the other methods to achieve this, this is the only one that works reliably.
-                    onmousedown: function() {
-                        window.getSelection().removeAllRanges()             // Because contentEditable is true, the storyboards become selectable. This prevents that by immediately deselecting them.
-                    }
-                })
-                storyboardContainer.style.maxHeight = isMobile ? "91.4vh" : "100vh"
+            })
+            storyboardContainer.style.maxHeight = isMobile ? "91.4vh" : "100vh"
 
 
-                if (mode == 3)  mode--
+            if (mode == 3)  mode--
 
-                let num = 0
+            let num = 0
 
-                const videoLength = +response.match(/"lengthSeconds":"(\d+)","ownerProfileUrl/)[1]
-                const secondsGap = videoLength <= 120 ? 1 : videoLength <= 300 ? 2 : videoLength < 900 ? 5 : 10                     // Depending on the video length, YouTube takes snapshots with different time spaces.
+            const videoLength = +response.match(/"lengthSeconds":"(\d+)","ownerProfileUrl/)[1]
+            const secondsGap = videoLength <= 120 ? 1 : videoLength <= 300 ? 2 : videoLength < 900 ? 5 : 10                     // Depending on the video length, YouTube takes snapshots with different time spaces.
 
-                createStoryboardImg(num, storyboardContainer, urlSplit, storyboardId, mode, videoLength, secondsGap)
-            //}//)
-            //xhr.send()
-
-
+            createStoryboardImg(num, storyboardContainer, urlSplit, storyboardId, mode, videoLength, secondsGap)
         }
     })
 
@@ -289,42 +281,35 @@ extendFunctions()
 
             document.body.click()
 
-            //const xhr = new XMLHttpRequest()
-            //xhr.open('GET', selectedVideoURL)
-            //xhr.onload = function()
             if (selectedVideoURL != lastVideoUrl)
             {
-                response = await makeRequest(selectedVideoURL)//.then((response)=>
+                response = await makeRequest(selectedVideoURL)
                 lastVideoUrl = selectedVideoURL
             }
 
+            const description = response.match(/"shortDescription":"(.+?)[^\\]"/)[1].replaceAll("\\n","\n").replaceAll("\\r","\r").replaceAll("\\","")
+
+            if (description.length < 2)
+                alert("This video doesn't have a description.")
+            else
             {
-                const description = response.match(/"shortDescription":"(.+?)[^\\]"/)[1].replaceAll("\\n","\n").replaceAll("\\r","\r").replaceAll("\\","")
-
-                if (description.length < 2)
-                    alert("This video doesn't have a description.")
-                else
+                backdrop = document.body.createElement("div",
                 {
-                    backdrop = document.body.createElement("div",
-                    {
-                        id: "descriptionBackdrop",
-                        style: "background: #0008; position: fixed; height: 100vh; width: 100vw; z-index: 9998;",
-                        onclick: function() { this.remove() }
-                    })
+                    id: "descriptionBackdrop",
+                    style: "background: #0008; position: fixed; height: 100vh; width: 100vw; z-index: 9998;",
+                    onclick: function() { this.remove() }
+                })
 
-                    backdrop.createElement("div",
-                    {
-                        id: "peekDescription",
-                        style: "position: fixed; inset: 0; margin: auto; height: max-content; width: 500px; background-color:"+ backgroundColor +
-                               "; max-width: 90%; z-index: 9999; font-size: initial; line-height: 1.4; box-shadow: #0005 0px 0px 25px 20px; "+
-                               "max-height: 90%; padding: 15px; color: var(--paper-listbox-color); overflow: auto; word-wrap: break-word;",
-                        innerText: description
-                    })
-                }
+                backdrop.createElement("div",
+                {
+                    id: "peekDescription",
+                    style: "position: fixed; inset: 0; margin: auto; height: max-content; width: 500px; background-color:"+ backgroundColor +
+                           "; max-width: 90%; z-index: 9999; font-size: initial; line-height: 1.4; box-shadow: #0005 0px 0px 25px 20px; "+
+                           "max-height: 90%; padding: 15px; color: var(--paper-listbox-color); overflow: auto; word-wrap: break-word;",
+                    innerText: description,
+                    onclick: ()=>event.stopPropagation()
+                })
             }
-            //xhr.send()
-
-
         }
     })
 
@@ -339,80 +324,66 @@ extendFunctions()
 
             document.body.click()
 
-            //const xhr = new XMLHttpRequest()
-            //xhr.open('GET', selectedVideoURL)
-            //xhr.onload = function()
             if (selectedVideoURL != lastVideoUrl)
             {
-                response = await makeRequest(selectedVideoURL)//.then((response)=>
+                response = await makeRequest(selectedVideoURL)
                 lastVideoUrl = selectedVideoURL
             }
 
-            {//console.log(xhr.responseText)
-            var apiKey
-                try
+
+            var apiKey = response.match(/"INNERTUBE_API_KEY":"(.+?)"/)[1]
+            let token = response.match(isMobile ? /\\x22continuationCommand\\x22:\\x7b\\x22token\\x22:\\x22(\w+)\\x22/ : /"continuationCommand":{"token":"(.+?)"/)[1]
+
+            //token = YCBsettings.sortByTopComments ? token.replace("ABeA", "AAeA") : token.replace("AAeA", "ABeA")                                                // One single character in the token is responsible for determining the sorting
+                                                                                                                                                                 // of the comments, being A the "Top comments" and B the "Newest first".
+            const pageName = selectedVideoURL.includes("/shorts/") ? "browse" : "next"
+
+            const commentsContainer = document.body.createElement("div",
+            {
+                id: "commentsContainer",
+                style: "position: fixed; top: 0; left: 0; right: 0; z-index: 9999; margin: auto; width: 700px; max-width: 92vw; overflow-y: scroll; padding: 10px;"+
+                       "border: 1px solid lightgray; background-color: "+ backgroundColor +"; color: var(--paper-listbox-color); font-size: 15px; visibility: hidden;",
+                onclick: ()=>event.stopPropagation()
+            })
+            commentsContainer.style.maxHeight = isMobile ? "92vh" : "97vh"
+
+            const sortingDropdownLabel = commentsContainer.createElement("span", {innerText: "Sort by: "})
+
+            const sortingDropdown = sortingDropdownLabel.createElement("select",
+            {
+                style: "background-color: " + backgroundColor + "; color: var(--paper-listbox-color); border: 1px solid lightgray; border-radius: 5px; padding: 3px; margin-bottom: 10px; margin-left: 5px;",
+                onchange: function()
                 {
-                    apiKey = response.match(/"INNERTUBE_API_KEY":"(.+?)"/)[1]
+                    commentsTextContainer.innerHTML = ""
+
+                    //token = token.replace(/A(A|B)eA/, "A"+this.value+"eA")
+
+                    loadCommentsOrReplies(commentsTextContainer, pageName, apiKey, token)
                 }
-                catch(e)
-                {/*console.log(xhr.responseText.match(/"INNERTUBE_API_KEY"/))*/}
-                let token
-                try{token = response.match(isMobile ? /\\x22continuationCommand\\x22:\\x7b\\x22token\\x22:\\x22(\w+)\\x22/ : /"continuationCommand":{"token":"(.+?)"/)[1]}
-                catch(e){}
-                //token = YCBsettings.sortByTopComments ? token.replace("ABeA", "AAeA") : token.replace("AAeA", "ABeA")                                                // One single character in the token is responsible for determining the sorting
-                                                                                                                                                                     // of the comments, being A the "Top comments" and B the "Newest first".
-                const pageName = selectedVideoURL.includes("/shorts/") ? "browse" : "next"
+            })
 
-                const commentsContainer = document.body.createElement("div",
+            sortingDropdown.createElement("option", {innerText: "Top comments", value: "A"})
+            sortingDropdown.createElement("option", {innerText: "Newest first", value: "B"})
+
+            sortingDropdown.value = YCBsettings.sortByTopComments ? "A" : "B"
+
+
+            const commentsTextContainer = commentsContainer.createElement("div", {style: "border-top: 1px solid lightgray; padding-top: 10px;"})
+
+
+            if (isMobile)
+            {
+                const closeButtonPositionContainer = commentsContainer.createElement("div", {style: "position: relative; right: 55px;"}, true)
+                const closeButtonContainer = closeButtonPositionContainer.createElement("div", {style: "position: absolute; right: 0px;"})
+                const closeButton = closeButtonContainer.createElement("div",
                 {
-                    id: "commentsContainer",
-                    style: "position: fixed; top: 0; left: 0; right: 0; z-index: 9999; margin: auto; width: 700px; max-width: 92vw; overflow-y: scroll; padding: 10px;"+
-                           "border: 1px solid lightgray; background-color: "+ backgroundColor +"; color: var(--paper-listbox-color); font-size: 15px; visibility: hidden;",
-                    onclick: ()=>event.stopPropagation()
+                    innerText: "X",
+                    style: "position: fixed; width: 25px; z-index: 99999; background-color: #ddd8; border-radius: 7px; padding: 10px 15px; text-align: center; font-size: 25px;",
+                    onclick: function() { document.body.click() }
                 })
-                commentsContainer.style.maxHeight = isMobile ? "92vh" : "97vh"
-
-                const sortingDropdownLabel = commentsContainer.createElement("span", {innerText: "Sort by: "})
-
-                const sortingDropdown = sortingDropdownLabel.createElement("select",
-                {
-                    style: "background-color: " + backgroundColor + "; color: var(--paper-listbox-color); border: 1px solid lightgray; border-radius: 5px; padding: 3px; margin-bottom: 10px; margin-left: 5px;",
-                    onchange: function()
-                    {
-                        commentsTextContainer.innerHTML = ""
-
-                        //token = token.replace(/A(A|B)eA/, "A"+this.value+"eA")
-
-                        loadCommentsOrReplies(commentsTextContainer, pageName, apiKey, token)
-                    }
-                })
-
-                sortingDropdown.createElement("option", {innerText: "Top comments", value: "A"})
-                sortingDropdown.createElement("option", {innerText: "Newest first", value: "B"})
-
-                sortingDropdown.value = YCBsettings.sortByTopComments ? "A" : "B"
-
-
-                const commentsTextContainer = commentsContainer.createElement("div", {style: "border-top: 1px solid lightgray; padding-top: 10px;"})
-
-
-                if (isMobile)
-                {
-                    const closeButtonPositionContainer = commentsContainer.createElement("div", {style: "position: relative; right: 55px;"}, true)
-                    const closeButtonContainer = closeButtonPositionContainer.createElement("div", {style: "position: absolute; right: 0px;"})
-                    const closeButton = closeButtonContainer.createElement("div",
-                    {
-                        innerText: "X",
-                        style: "position: fixed; width: 25px; z-index: 99999; background-color: #ddd8; border-radius: 7px; padding: 10px 15px; text-align: center; font-size: 25px;",
-                        onclick: function() { document.body.click() }
-                    })
-                }
-
-                loadCommentsOrReplies(commentsTextContainer, pageName, apiKey, token)
             }
-            //xhr.send()
 
-
+            loadCommentsOrReplies(commentsTextContainer, pageName, apiKey, token)
         }
     })
 
@@ -427,43 +398,36 @@ extendFunctions()
 
             document.body.click()
 
-            //const xhr = new XMLHttpRequest()
-            //xhr.open('GET', selectedVideoURL)
-            //xhr.onload = function()
             if (selectedVideoURL != lastVideoUrl)
             {
-                response = await makeRequest(selectedVideoURL)//.then((response)=>
+                response = await makeRequest(selectedVideoURL)
                 lastVideoUrl = selectedVideoURL
             }
 
+
+            const channelId = response.match(/"channelId":"(.+?)"/)
+
+            const channelViewportContainer = document.body.createElement("div",
             {
-                const channelId = response.match(/"channelId":"(.+?)"/)
+                id: "channelViewportContainer",
+                style: "position: fixed; width: 720px; max-width: 100vw; height: "+ (isMobile ? "91vh" : "100vh") +"; top: 0; left: 0px; right: 0px; z-index: 9999; margin: auto; background-color: "+ backgroundColor +";"
+            })
 
-                const channelViewportContainer = document.body.createElement("div",
-                {
-                    id: "channelViewportContainer",
-                    style: "position: fixed; width: 720px; max-width: 100vw; height: "+ (isMobile ? "91vh" : "100vh") +"; top: 0; left: 0px; right: 0px; z-index: 9999; margin: auto; background-color: "+ backgroundColor +";"
-                })
+            const channelViewport = channelViewportContainer.createElement("iframe",
+            {
+                style: "width: calc(100% - 4px); height: 100%;",
+                src: "https://www.youtube.com/channel/" + channelId[1]
+            })
 
-                const channelViewport = channelViewportContainer.createElement("iframe",
+            if (isMobile)
+            {
+                const closeButton = channelViewportContainer.createElement("div",
                 {
-                    style: "width: calc(100% - 4px); height: 100%;",
-                    src: "https://www.youtube.com/channel/" + channelId[1]
-                })
-
-                if (isMobile)
-                {
-                    const closeButton = channelViewportContainer.createElement("div",
-                    {
-                        innerText: "X",
-                        style: "position: absolute; width: 25px; top: 0px; z-index: 99999; background-color: #ddd; border-radius: 7px; padding: 10px 15px; text-align: center; font-size: 25px;",
-                        onclick: function() { document.body.click() }
-                    }, true)
-                }
+                    innerText: "X",
+                    style: "position: absolute; width: 25px; top: 0px; z-index: 99999; background-color: #ddd; border-radius: 7px; padding: 10px 15px; text-align: center; font-size: 25px;",
+                    onclick: function() { document.body.click() }
+                }, true)
             }
-            //xhr.send()
-
-
         }
     })
 
@@ -527,84 +491,46 @@ extendFunctions()
     })
 
 
-    //viewStoryboardButton.style.borderTop = "solid 1px #aaa5"             // Add a separator between Youtube's menu items and the ones added by the script.
     viewStoryboardButton.style.borderRadius = "12px 12px 0px 0px"
     viewThumbnailButton.style.borderRadius = "0px 0px 12px 12px"
 
-    /*if (isVideoPage)
+
+    var floatingBurgerContainer = document.body.createElement("div",
     {
-        var burgerMenuBtn = document.body.createElement("div",
+        id: "floatingBurgerContainer",
+        style: "visibility: hidden; position: fixed; z-index: 9999; padding: 30px 30px; border-radius: 50px !important;"
+    })
+
+    var floatingBurgerBtn = floatingBurgerContainer.createElement("div",
+    {
+        id: "floatingBurgerBtn",
+        style: "display: flex; justify-content: right; font-size: 16px; z-index: 9999; cursor: pointer; text-shadow: black 0px 0px 2px;" +
+               "padding: 5px 10px; border-radius: 50px !important; border: 1px solid gray; background: white; color: #333;",
+        innerHTML: "☰",
+        onclick: function()
         {
-            id: "burgerMenuBtn",
-            style: "position: absolute; display: flex; justify-content: right; font-size: 16px; z-index: 999; cursor: pointer;" +
-                   "text-shadow: black 0px 0px 2px; padding: 5px 10px; border-radius: 20px; color: gray;",
-            innerHTML: "☰",
-            onclick: function()
-            {
-                event.stopPropagation()
+            event.stopPropagation()
 
-                //selectedVideoURL = selectedVideoEll.href
+            burgerMenu.style.visibility = "visible"
+        }
+    })
 
-                burgerMenu.style.visibility = "visible"
-            }
-        })
-    }*/
+    var burgerMenu = floatingBurgerBtn.createElement("div",
+    {
+        id: "burgerMenu",
+        style: "visibility: hidden; position: absolute; color: var(--paper-listbox-color); background-color:"+ backgroundColor +
+               "; border-radius: 12px; box-shadow: #0000004d 0px 0px 15px 10px; text-shadow: initial;",
+    })
 
-
-
-
-    //burgerMenuBtn?.appendChild(burgerMenu)
-
-    //if (!isVideoPage)
-    //{
-        var floatingBurgerContainer = document.body.createElement("div",
-        {
-            id: "floatingBurgerContainer",
-            style: "visibility: hidden; position: fixed; z-index: 9999; padding: 30px 30px; border-radius: 50px !important;"
-        })
-
-        var floatingBurgerBtn = floatingBurgerContainer.createElement("div",
-        {
-            id: "floatingBurgerBtn",
-            style: "display: flex; justify-content: right; font-size: 16px; z-index: 9999; cursor: pointer; text-shadow: black 0px 0px 2px;" +
-                   "padding: 5px 10px; border-radius: 50px !important; border: 1px solid gray; background: white; color: #333;",
-            innerHTML: "☰",
-            onclick: function()
-            {
-                event.stopPropagation()
-
-                //selectedVideoURL = selectedVideoEll.href
-
-                burgerMenu.style.visibility = "visible"
-            }
-        })
-
-        //var floatingBurgerMenu = burgerMenu//.cloneNode(true)
-
-        //floatingBurgerBtn.appendChild(floatingBurgerMenu)
-
-        var burgerMenu = floatingBurgerBtn.createElement("div",
-        {
-            id: "burgerMenu",
-            style: "visibility: hidden; position: absolute; color: var(--paper-listbox-color); background-color:"+ backgroundColor +
-                   "; border-radius: 12px; box-shadow: #0000004d 0px 0px 15px 10px; text-shadow: initial;",
-        })
-
-        burgerMenu.appendChild(viewStoryboardButton)
-        burgerMenu.appendChild(viewTranscriptButton)
-        burgerMenu.appendChild(viewDescriptionButton)
-        burgerMenu.appendChild(viewCommentsButton)
-        burgerMenu.appendChild(viewChannelButton)
-        burgerMenu.appendChild(viewThumbnailButton)
-    //}
+    burgerMenu.appendChild(viewStoryboardButton)
+    burgerMenu.appendChild(viewTranscriptButton)
+    burgerMenu.appendChild(viewDescriptionButton)
+    burgerMenu.appendChild(viewCommentsButton)
+    burgerMenu.appendChild(viewChannelButton)
+    burgerMenu.appendChild(viewThumbnailButton)
 }
 
 
-/*document.body.createElement("iframe",
-{
-    src: (isChrome ? chrome : browser).runtime.getURL("donation.html"),
-    style: "position: fixed; width: 350px; height: 810px; max-height: 100vh; inset: 0; margin: auto; z-index: 9999; border: 1px solid gray; border-radius: 15px; background: #f6f6f6;"
-});*/
 
 
 (async ()=>
@@ -662,35 +588,19 @@ extendFunctions()
 
         isVideoPage = location.href.includes("youtube.com/watch?")
 
-        //menuEll = isVideoPage ? burgerMenu : floatingBurgerMenu
-
         if (node)
         {
             if (burgerMenu.style.visibility == "visible")
                 return
 
-            //selectedVideoEll = node
             processVideoItem(node)
         }
         else
         {
-            /*if (!timeout)
-            {
-                timeout = setTimeout(()=>
-                {*/
-                    if (document.querySelector(":is(#burgerMenuBtn, #floatingBurgerBtn, #floatingBurgerContainer, .ytd-video-preview):hover"))
-                    //{
-                        //timeout = null
-                        return;
-                    //}
+            if (document.querySelector(":is(#burgerMenuBtn, #floatingBurgerBtn, #floatingBurgerContainer, .ytd-video-preview):hover"))
+                return;
 
-                    //(isVideoPage ? burgerMenuBtn : floatingBurgerContainer).style.visibility = "hidden"
-                    floatingBurgerContainer.style.visibility = "hidden"
-
-                    /*timeout = null
-
-                }, 1000)
-            }*/
+            floatingBurgerContainer.style.visibility = "hidden"
         }
 
     }, 250)
@@ -744,62 +654,6 @@ function addMenuItems()
             menu.appendChild(viewChannelButton)
             menu.appendChild(viewThumbnailButton)
         }
-        /*else
-        {
-            const menuParent = document.querySelector("ytd-popup-container")
-
-            if (!menuParent.querySelector("[role='menu']"))
-            {
-                menu.click()
-                menu.click()              // The recommendation menu doesn't exist in the HTML before it's clicked for the first time. This forces it to be created and dismisses it immediately.
-            }
-
-
-            const waitForMenuItem = setInterval(function()
-            {
-                const menuItem = menuParent.querySelector("yt-list-item-view-model, ytd-menu-service-item-renderer")
-
-                if (!menuItem)
-                    return
-
-                clearInterval(waitForMenuItem)
-
-
-                const optionsParent = menuParent.querySelector("[role='menu']").parentElement
-                optionsParent.style = "max-height: max-content !important; max-width: max-content !important; height: max-content !important; width: max-content !important;"                // Change the max width and height so that the new items fit in the menu.
-
-                menuItem.parentElement.appendChild(viewStoryboardButton)
-                menuItem.parentElement.appendChild(viewTranscriptButton)
-                menuItem.parentElement.appendChild(viewDescriptionButton)
-                menuItem.parentElement.appendChild(viewCommentsButton)
-                menuItem.parentElement.appendChild(viewChannelButton)
-                menuItem.parentElement.appendChild(viewThumbnailButton)
-
-                if (!isMenuReady)
-                {
-                    menu.click()              // The menu doesn't apply the width and height adjustments the first time it's opened, but it
-                    menu.click()              // does on the second time. This forces the menu to be opened again and dismisses it immediately.
-
-                    isMenuReady = true
-                }
-
-
-                const bottomValue = menuItem.parentElement.getBoundingClientRect().bottom
-                const menuContainer = optionsParent.parentElement.parentElement.style
-
-                if (bottomValue > screen.height)
-                    menuContainer.top = parseInt(menuContainer.top) - (bottomValue - screen.height + 10) + "px"
-
-
-                const isChannelOrPlaylistPage = location.pathname.includes("/channel/") || location.pathname.includes("/user/") || location.pathname.includes("/c/") || location.pathname == "/playlist"
-
-                if (isChannelOrPlaylistPage && document.querySelector("ytd-topbar-menu-button-renderer #avatar-btn"))             // In the channel page, when the user is signed in, Youtube already adds a separator at the bottom of the menu.
-                    viewStoryboardButton.style.borderTop = ""                                                                     // This removes the separator when on these pages.
-                else
-                    viewStoryboardButton.style.borderTop = "solid 1px #aaa5"                      // And adds it back when the user switches to another non-channel page.
-
-            }, 100)
-        }*/
 
     }, 100)
 }
@@ -856,20 +710,11 @@ function processVideoItem(node)
             floatingBurgerContainer.style.paddingTop = "30px"
         }
 
-        /*if (isVideoPage)
-        {
-            burgerMenuBtn.style.top = window.scrollY+yPos+"px"
-            burgerMenuBtn.style.left = window.scrollX+xPos+"px"
 
-            burgerMenuBtn.style.visibility = "visible"
-        }
-        else
-        {*/
-            floatingBurgerContainer.style.top = yPos+"px"
-            floatingBurgerContainer.style.left = xPos+"px"
+        floatingBurgerContainer.style.top = yPos+"px"
+        floatingBurgerContainer.style.left = xPos+"px"
 
-            floatingBurgerContainer.style.visibility = "visible"
-        //}
+        floatingBurgerContainer.style.visibility = "visible"
 
         selectedVideoURL = node.href
     }
